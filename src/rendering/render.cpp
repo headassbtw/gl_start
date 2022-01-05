@@ -1,15 +1,145 @@
+
 #include <GL/glew.h>
 #include <GL/gl.h>
+#include <glm/ext/matrix_transform.hpp>
+#include <glm/ext/vector_float3.hpp>
 #include <rendering/shaders.hpp>
 #include <cstdio>
+#include <vector>
 #include <rendering/render.hpp>
-
+#include <time.hpp>
 #include <GL/gl.h>
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
-#include <rendering/objectrender.hpp>
-
+#include <rendering/modelrender.hpp>
+#include <string>
+#include <defs.hpp>
+#include <loaders/textureloader.hpp>
+#include <loaders/objloader.hpp>
 GLFWwindow* Window;
+
+GLuint progID;
+GLuint SwapShader;
+
+GLuint MatrixID;
+GLuint TextureID;
+GLuint ViewMatrixID;
+GLuint ModelMatrixID;
+GLuint LightID;
+
+GLuint Texture;
+GLuint Texture2;
+
+std::vector< glm::vec3 > og_vertices;
+std::vector< glm::vec3 > vertices;
+std::vector< glm::vec2 > uvs;
+std::vector< glm::vec3 > normals;
+
+int skyboxverts = 0;
+
+glm::vec3 pos;
+glm::vec3 look;
+double horizontalAngle, verticalAngle;
+auto vertical_limit = glm::radians(89.9f);
+auto vertical_base = glm::radians(-89.9f);
+float sens = 0.7f;
+void Update(){
+    double xpos, ypos;
+    glfwGetCursorPos(Window, &xpos, &ypos);
+    if(glfwGetKey( Window, GLFW_KEY_GRAVE_ACCENT ) == GLFW_RELEASE){
+        //when tilde is not held, temporary mouse lock disable key
+        
+        glfwSetCursorPos(Window, WINDOW_WIDTH/2, WINDOW_HEIGHT/2);
+    }
+
+    horizontalAngle += Time::DeltaTime * sens * float(WINDOW_WIDTH/2 - xpos );
+    verticalAngle   += Time::DeltaTime * sens * float( WINDOW_HEIGHT/2 - ypos );
+    if(glm::degrees(verticalAngle) > 89.9f ) verticalAngle = vertical_limit;
+    if(glm::degrees(verticalAngle) < -89.9f ) verticalAngle = vertical_base;
+
+    look.x = cos(verticalAngle) * sin(horizontalAngle);
+    look.y =sin(verticalAngle);
+    look.z = cos(verticalAngle) * cos(horizontalAngle);
+
+
+    
+
+    if (glfwGetKey( Window, GLFW_KEY_W ) == GLFW_PRESS){
+        pos += look * Time::DeltaTime;
+    }
+    if (glfwGetKey( Window, GLFW_KEY_S ) == GLFW_PRESS){
+        pos -= look * Time::DeltaTime;
+    }
+
+        glm::mat4 Projection = glm::perspective(glm::radians(90.0f), (float) WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 150.0f);
+        glm::mat4 View = glm::lookAt(
+        glm::vec3(pos.x,pos.y,pos.z),                               //position
+        glm::vec3(look.x + pos.x,look.y + pos.y,look.z + pos.z),    //point at a point
+        glm::vec3(0,(glfwGetKey( Window, GLFW_KEY_A ) == GLFW_RELEASE) ? 1 : -1,0)
+        );
+        glm::mat4 Model = glm::mat4(1.0f);
+        glm::mat4 mvp = Projection * View * Model;
+        glm::mat4 ViewMatrix = mvp;
+		glm::mat4 ModelMatrix = glm::mat4(1.0);
+        
+        glUniform1f(SwapShader, 0);
+
+        glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
+		glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &ModelMatrix[0][0]);
+		glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
+
+        glm::vec3 lightPos = glm::vec3(4,4,-4);
+		glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
+}
+float skybox_scale = 100.0f;
+void RenderUpdate(){
+
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        
+    glActiveTexture(GL_TEXTURE0);
+
+    if (glfwGetKey( Window, GLFW_KEY_SPACE ) == GLFW_PRESS){
+        glUniform1f(SwapShader, 1);
+        glBindTexture(GL_TEXTURE_2D, Texture2);
+    }
+    else{
+        glUniform1f(SwapShader, 0);
+        glBindTexture(GL_TEXTURE_2D, Texture);
+    }
+    glUniform1i(TextureID, 0);
+
+    int last = vertices.size()-1;
+    for(int i = 0; i < skyboxverts; i++){
+        vertices[i].x = (og_vertices[i].x * skybox_scale) + pos.x;
+        vertices[i].y = (og_vertices[i].y * skybox_scale) + pos.y;
+        vertices[i].z = (og_vertices[i].z * skybox_scale) + pos.z;
+    }
+    
+
+    //for(int i = 0; i < vertices.size(); i++){
+    //    vertices[i].x += (0.5f * Time::DeltaTime);
+    //}
+    model_render::Bind_Buffers(vertices, uvs,normals);
+
+    model_render::Prepare_Buffers();
+
+
+    glUseProgram(progID);
+    glUniform1f(SwapShader, 0);
+    glBindTexture(GL_TEXTURE_2D, Texture2);
+    glDrawArrays(GL_TRIANGLES, 0, skyboxverts);
+    glUniform1f(SwapShader, 1);
+    glBindTexture(GL_TEXTURE_2D, Texture);
+    glDrawArrays(GL_TRIANGLES, skyboxverts, vertices.size());
+
+
+    model_render::Cleanup_Buffers();
+    
+    
+
+    glfwSwapBuffers(Window);
+}
+
 
 int Render(){
     glewExperimental = true;
@@ -24,7 +154,7 @@ int Render(){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     
-    Window = glfwCreateWindow(1600, 900, "OpenGL", NULL, NULL);
+    Window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "OpenGL", NULL, NULL);
     if(Window == NULL){
         fprintf(stderr, "Failed to open window\n");
         glfwTerminate();
@@ -37,47 +167,49 @@ int Render(){
         return -1;
     }
 
-    //now the real stuff begins!
-    glfwSetInputMode(Window, GLFW_STICKY_KEYS, GL_TRUE);
-    obj_render::Bind_Buffer();
-    GLuint progID = Shaders::GetShaders();
+    glfwSetInputMode(Window, GLFW_STICKY_KEYS, GL_FALSE);
+    glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    std::vector< glm::vec3 > t_vertices;
+std::vector< glm::vec2 > t_uvs;
+std::vector< glm::vec3 > t_normals;
+
+    //addAxisShit();
+    bool res_skybox = Loaders::Models::loadOBJ("content/models/skybox.obj", og_vertices, uvs, normals);
+    if(!res_skybox){
+        fprintf(stderr, "FUCKED UP THE SKYBOX LMAO\n");
+        return -1;
+    }
+    skyboxverts = og_vertices.size();
+    bool res = Loaders::Models::loadOBJ("content/models/cube.obj", og_vertices, uvs, normals);
+    printf("meshes loaded\n");
+    
+    model_render::Bind_Buffers(og_vertices, uvs,normals);
+    
+    for(int i = 0; i < og_vertices.size();i++){
+        vertices.push_back(og_vertices[i]);
+    }
+    
+    progID = Shaders::GetShaders(0);
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
-    glUseProgram(progID);
     glClearColor(0.0f, 0.1f, 0.3f, 0.5f);
-
-
-    glm::mat4 Projection = glm::perspective(glm::radians(90.0f), (float) 1600 / (float)900, 0.1f, 100.0f);
-    glm::mat4 View = glm::lookAt(
-    glm::vec3(4,3,3), // Camera is at (4,3,3), in World Space
-    glm::vec3(0,0,0), // and looks at the origin
-    glm::vec3(0,1,0)  // Head is up (set to 0,-1,0 to look upside-down)
-    );
-    glm::mat4 Model = glm::mat4(1.0f);
-    glm::mat4 mvp = Projection * View * Model;
-    GLuint MatrixID = glGetUniformLocation(progID, "MVP");
-    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
-
-
-
-
-
-
-
-
+    Texture = Loaders::Textures::LoadDDS("content/textures/coob.dds");
+    Texture2 = Loaders::Textures::LoadDDS("content/textures/skybox.dds");
+    MatrixID = glGetUniformLocation(progID, "MVP");
+    ViewMatrixID = glGetUniformLocation(progID, "V");
+	ModelMatrixID = glGetUniformLocation(progID, "M");
+    SwapShader = glGetUniformLocation(progID, "Lit");
+    
+    TextureID  = glGetUniformLocation(progID, "textureSampler");
+    LightID = glGetUniformLocation(progID, "LightPosition_worldspace");
     do{
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-        
-
-
-
-
-        //render shit!
-        obj_render::Show_Cube();
-
-        glfwSwapBuffers(Window);
+        double frameStartTime = glfwGetTime();
         glfwPollEvents();
+        Update();
+        RenderUpdate();
+        double frameEndTime = glfwGetTime();
+        Time::DeltaTime = float(frameEndTime - frameStartTime);
     }
     while(glfwGetKey(Window, GLFW_KEY_ESCAPE) != GLFW_PRESS &&
     glfwWindowShouldClose(Window) == 0);

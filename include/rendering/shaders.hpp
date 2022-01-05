@@ -1,5 +1,5 @@
 #pragma once
 #include <GL/gl.h>
 namespace Shaders{
-    GLuint GetShaders();
+    GLuint GetShaders(int shaderset);
 }

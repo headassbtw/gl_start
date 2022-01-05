@@ -18,4 +18,4 @@ file(GLOB_RECURSE SRC CONFIGURE_DEPENDS
 
 add_executable(gl_start ${SRC})
 
-target_link_libraries(gl_start GLFW OpenGL ${GLFW_LIBRARIES} GLEW)
+target_link_libraries(gl_start glfw OpenGL ${GLFW_LIBRARIES} GLEW)
