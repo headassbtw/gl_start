@@ -1,2 +1,2 @@
 CMakeModules/** linguist-vendored
-CMakeLists.txt linguist-language=C++
+CMakeLists.txt linguist-documentation
