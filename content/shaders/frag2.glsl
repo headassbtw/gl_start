@@ -1,6 +1,5 @@
 #version 330 core
 
-// Interpolated values from the vertex shaders
 in vec2 UV;
 in vec3 Position_worldspace;
 in vec3 Normal_cameraspace;
@@ -14,17 +13,15 @@ out vec3 color;
 uniform sampler2D myTextureSampler;
 uniform mat4 MV;
 uniform vec3 LightPosition_worldspace;
+// Values that stay constant for the whole mesh.
+uniform bool Lit;
 
-void fragtwo(){
-
-	// Light emission properties
-	// You probably want to put them as uniforms
+void main(){
 	vec3 LightColor = vec3(1,1,1);
 	float LightPower = 50.0f;
 	
 	// Material properties
-	//vec3 MaterialDiffuseColor = texture( myTextureSampler, UV ).rgb;
-	vec3 MaterialDiffuseColor = vec3(255.0,0.0,0.0);
+	vec3 MaterialDiffuseColor = texture( myTextureSampler, UV ).rgb;
 	vec3 MaterialAmbientColor = vec3(0.2,0.2,0.2) * MaterialDiffuseColor;
 	vec3 MaterialSpecularColor = vec3(0.3,0.3,0.3);
 
@@ -53,11 +50,5 @@ void fragtwo(){
 	float cosAlpha = clamp( dot( E,R ), 0,1 );
 	
 	color = 
-		// Ambient : simulates indirect lighting
-		MaterialAmbientColor +
-		// Diffuse : "color" of the object
-		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance*distance) +
-		// Specular : reflective highlight, like a mirror
-		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) / (distance*distance);
-
+		MaterialDiffuseColor;
 }

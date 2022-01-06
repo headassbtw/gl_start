@@ -19,6 +19,7 @@
 GLFWwindow* Window;
 
 GLuint progID;
+GLuint progID2;
 GLuint SwapShader;
 
 GLuint MatrixID;
@@ -43,6 +44,28 @@ double horizontalAngle, verticalAngle;
 auto vertical_limit = glm::radians(89.9f);
 auto vertical_base = glm::radians(-89.9f);
 float sens = 0.7f;
+
+
+void HandleProjection(){
+    glm::mat4 Projection = glm::perspective(glm::radians(90.0f), (float) WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 150.0f);
+    glm::mat4 View = glm::lookAt(
+    glm::vec3(pos.x,pos.y,pos.z),                               //position
+    glm::vec3(look.x + pos.x,look.y + pos.y,look.z + pos.z),    //point at a point
+    glm::vec3(0,(glfwGetKey( Window, GLFW_KEY_A ) == GLFW_RELEASE) ? 1 : -1,0)
+    );
+    glm::mat4 Model = glm::mat4(1.0f);
+    glm::mat4 mvp = Projection * View * Model;
+    glm::mat4 ViewMatrix = mvp;
+    glm::mat4 ModelMatrix = glm::mat4(1.0);
+
+    glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
+    glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &ModelMatrix[0][0]);
+    glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
+
+    glm::vec3 lightPos = glm::vec3(4,4,-4);
+    glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
+}
+
 void Update(){
     double xpos, ypos;
     glfwGetCursorPos(Window, &xpos, &ypos);
@@ -70,27 +93,20 @@ void Update(){
     if (glfwGetKey( Window, GLFW_KEY_S ) == GLFW_PRESS){
         pos -= look * Time::DeltaTime;
     }
-
-        glm::mat4 Projection = glm::perspective(glm::radians(90.0f), (float) WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 150.0f);
-        glm::mat4 View = glm::lookAt(
-        glm::vec3(pos.x,pos.y,pos.z),                               //position
-        glm::vec3(look.x + pos.x,look.y + pos.y,look.z + pos.z),    //point at a point
-        glm::vec3(0,(glfwGetKey( Window, GLFW_KEY_A ) == GLFW_RELEASE) ? 1 : -1,0)
-        );
-        glm::mat4 Model = glm::mat4(1.0f);
-        glm::mat4 mvp = Projection * View * Model;
-        glm::mat4 ViewMatrix = mvp;
-		glm::mat4 ModelMatrix = glm::mat4(1.0);
+    HandleProjection();
         
-        glUniform1f(SwapShader, 0);
-
-        glUniformMatrix4fv(MatrixID, 1, GL_FALSE, &mvp[0][0]);
-		glUniformMatrix4fv(ModelMatrixID, 1, GL_FALSE, &ModelMatrix[0][0]);
-		glUniformMatrix4fv(ViewMatrixID, 1, GL_FALSE, &ViewMatrix[0][0]);
-
-        glm::vec3 lightPos = glm::vec3(4,4,-4);
-		glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
 }
+void SwitchShader(GLuint prog){
+    glUseProgram(prog);
+    MatrixID = glGetUniformLocation(prog, "MVP");
+    ViewMatrixID = glGetUniformLocation(prog, "V");
+	ModelMatrixID = glGetUniformLocation(prog, "M");
+    SwapShader = glGetUniformLocation(prog, "Lit");
+    
+    TextureID  = glGetUniformLocation(prog, "textureSampler");
+    LightID = glGetUniformLocation(prog, "LightPosition_worldspace");
+}
+
 float skybox_scale = 100.0f;
 void RenderUpdate(){
 
@@ -100,13 +116,14 @@ void RenderUpdate(){
 
     if (glfwGetKey( Window, GLFW_KEY_SPACE ) == GLFW_PRESS){
         glUniform1f(SwapShader, 1);
+        SwitchShader(progID2);
         glBindTexture(GL_TEXTURE_2D, Texture2);
     }
     else{
         glUniform1f(SwapShader, 0);
+        SwitchShader(progID);
         glBindTexture(GL_TEXTURE_2D, Texture);
     }
-    glUniform1i(TextureID, 0);
 
     int last = vertices.size()-1;
     for(int i = 0; i < skyboxverts; i++){
@@ -116,29 +133,33 @@ void RenderUpdate(){
     }
     
 
-    //for(int i = 0; i < vertices.size(); i++){
-    //    vertices[i].x += (0.5f * Time::DeltaTime);
-    //}
+    
     model_render::Bind_Buffers(vertices, uvs,normals);
 
     model_render::Prepare_Buffers();
 
 
-    glUseProgram(progID);
+
+    SwitchShader(progID2);
     glUniform1f(SwapShader, 0);
     glBindTexture(GL_TEXTURE_2D, Texture2);
+    HandleProjection();
     glDrawArrays(GL_TRIANGLES, 0, skyboxverts);
+
+    SwitchShader(progID);
     glUniform1f(SwapShader, 1);
     glBindTexture(GL_TEXTURE_2D, Texture);
+    HandleProjection();
     glDrawArrays(GL_TRIANGLES, skyboxverts, vertices.size());
 
 
     model_render::Cleanup_Buffers();
-    
-    
+
 
     glfwSwapBuffers(Window);
 }
+
+
 
 
 int Render(){
@@ -154,7 +175,7 @@ int Render(){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     
-    Window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "OpenGL", NULL, NULL);
+    Window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "i haven't found a practical limit to how long window titles can be, and at this point i'm sure there has to be one but i'm not sure what it would be, but to be fair i haven't seen any long titles", NULL, NULL);
     if(Window == NULL){
         fprintf(stderr, "Failed to open window\n");
         glfwTerminate();
@@ -190,19 +211,14 @@ std::vector< glm::vec3 > t_normals;
         vertices.push_back(og_vertices[i]);
     }
     
-    progID = Shaders::GetShaders(0);
+    progID = Shaders::GetShaders("shaders/vert.glsl","shaders/masterfrag.glsl");
+    progID2 = Shaders::GetShaders("shaders/vert.glsl","shaders/masterfrag.glsl");
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.1f, 0.3f, 0.5f);
     Texture = Loaders::Textures::LoadDDS("content/textures/coob.dds");
     Texture2 = Loaders::Textures::LoadDDS("content/textures/skybox.dds");
-    MatrixID = glGetUniformLocation(progID, "MVP");
-    ViewMatrixID = glGetUniformLocation(progID, "V");
-	ModelMatrixID = glGetUniformLocation(progID, "M");
-    SwapShader = glGetUniformLocation(progID, "Lit");
-    
-    TextureID  = glGetUniformLocation(progID, "textureSampler");
-    LightID = glGetUniformLocation(progID, "LightPosition_worldspace");
+    SwitchShader(progID);
     do{
         double frameStartTime = glfwGetTime();
         glfwPollEvents();
