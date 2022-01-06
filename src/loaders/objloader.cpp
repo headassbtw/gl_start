@@ -1,5 +1,7 @@
 #include "loaders/objloader.hpp"
+#include "content/binaryio.hpp"
 #include <cstdio>
+#include <fstream>
 #include <string>
 #include <cstring>
 bool Loaders::Models::loadOBJ(
@@ -88,5 +90,46 @@ bool Loaders::Models::loadOBJ(
 	}
 	fclose(file);
     printf("Loaded OBJ file!\n");
+	return true;
+}
+
+bool Loaders::Models::loadCOB(
+        const char * path,
+        std::vector < glm::vec3 > & out_vertices,
+        std::vector < glm::vec2 > & out_uvs,
+        std::vector < glm::vec3 > & out_normals
+){
+    printf("Loading COB file %s...\n", path);
+
+	std::vector<unsigned int> vertexIndices, uvIndices, normalIndices;
+	std::vector<glm::vec3> temp_vertices; 
+	std::vector<glm::vec2> temp_uvs;
+	std::vector<glm::vec3> temp_normals;
+
+
+	std::ifstream file (path, std::ios::in | std::ios::binary);
+	if( !file ){
+		fprintf(stderr,"Could not open COB file\n");
+		return false;
+	} printf("Opened COB file\n");
+
+	char magic[4];
+	file.read(magic, 4);
+	printf("COB file has magic: %s\n",magic);
+
+
+	int Version = BinaryIO::ReadInt(&file);
+	int VertexCount = BinaryIO::ReadInt(&file);
+	int VertexTexCoordCount = BinaryIO::ReadInt(&file);
+	int VertexNormalCount = BinaryIO::ReadInt(&file);
+	int FaceCount = BinaryIO::ReadInt(&file);
+	
+	
+
+	printf("Version: %s\n",std::to_string(Version).c_str());
+
+
+	file.close();
+    printf("Loaded COB file!\n");
 	return true;
 }

@@ -43,13 +43,17 @@ double horizontalAngle, verticalAngle;
 auto vertical_limit = glm::radians(89.9f);
 auto vertical_base = glm::radians(-89.9f);
 float sens = 0.7f;
+float speed = 1.0f;
 void Update(){
     double xpos, ypos;
     glfwGetCursorPos(Window, &xpos, &ypos);
     if(glfwGetKey( Window, GLFW_KEY_GRAVE_ACCENT ) == GLFW_RELEASE){
         //when tilde is not held, temporary mouse lock disable key
-        
+        glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
         glfwSetCursorPos(Window, WINDOW_WIDTH/2, WINDOW_HEIGHT/2);
+    }
+    else{
+        glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
 
     horizontalAngle += Time::DeltaTime * sens * float(WINDOW_WIDTH/2 - xpos );
@@ -65,10 +69,10 @@ void Update(){
     
 
     if (glfwGetKey( Window, GLFW_KEY_W ) == GLFW_PRESS){
-        pos += look * Time::DeltaTime;
+        pos += look * speed * Time::DeltaTime;
     }
     if (glfwGetKey( Window, GLFW_KEY_S ) == GLFW_PRESS){
-        pos -= look * Time::DeltaTime;
+        pos -= look * speed * Time::DeltaTime;
     }
 
         glm::mat4 Projection = glm::perspective(glm::radians(90.0f), (float) WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 150.0f);
@@ -106,6 +110,14 @@ void RenderUpdate(){
         glUniform1f(SwapShader, 0);
         glBindTexture(GL_TEXTURE_2D, Texture);
     }
+
+    if (glfwGetKey( Window, GLFW_KEY_LEFT_SHIFT ) == GLFW_PRESS){
+        speed = 1.5f;
+    }
+    else{
+        speed = 1.0f;
+    }
+
     glUniform1i(TextureID, 0);
 
     int last = vertices.size()-1;
@@ -139,6 +151,8 @@ void RenderUpdate(){
 
     glfwSwapBuffers(Window);
 }
+
+
 
 
 int Render(){
@@ -175,13 +189,14 @@ std::vector< glm::vec2 > t_uvs;
 std::vector< glm::vec3 > t_normals;
 
     //addAxisShit();
-    bool res_skybox = Loaders::Models::loadOBJ("content/models/skybox.obj", og_vertices, uvs, normals);
+    bool res_skybox = Loaders::Models::loadOBJ("content/models/skybox.cob", og_vertices, uvs, normals);
     if(!res_skybox){
         fprintf(stderr, "FUCKED UP THE SKYBOX LMAO\n");
         return -1;
     }
     skyboxverts = og_vertices.size();
-    bool res = Loaders::Models::loadOBJ("content/models/cube.obj", og_vertices, uvs, normals);
+    bool shitass = Loaders::Models::loadCOB("content/models/shitass.cob", og_vertices, uvs, normals);
+    bool res = Loaders::Models::loadOBJ("content/models/cube.cob", og_vertices, uvs, normals);
     printf("meshes loaded\n");
     
     model_render::Bind_Buffers(og_vertices, uvs,normals);
