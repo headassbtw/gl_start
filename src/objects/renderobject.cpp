@@ -28,7 +28,7 @@ RenderObject::~RenderObject(){
 }
 void RenderObject::ApplyTransform(){
 
-    double frameStartTime = glfwGetTime();
+    double s = glfwGetTime();
         
     Mesh.Vertices.clear();
     for(int i = 0; i < Mesh.p_Vertices.size(); i++){
@@ -73,6 +73,8 @@ void RenderObject::ApplyTransform(){
     Transform.cache_Position = Transform.Position;
     Transform.Rotation = Transform.Rotation;
     Transform.Scale = Transform.Scale;
+    double e = glfwGetTime();    
+    printf("transform updated in %fms\n",(e-s)/1000);
 }
 
 void transform::Update(){

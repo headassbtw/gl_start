@@ -57,7 +57,7 @@ float sens = 0.7f;
 
 
 void HandleProjection(){
-    glm::mat4 Projection = glm::perspective(glm::radians(90.0f), (float) WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 150.0f);
+    glm::mat4 Projection = glm::perspective(glm::radians(90.0f), (float) WINDOW_WIDTH / (float)WINDOW_HEIGHT, 0.1f, 15000.0f);
     glm::mat4 View = glm::lookAt(
     glm::vec3(pos.x,pos.y,pos.z),                               //position
     glm::vec3(look.x + pos.x,look.y + pos.y,look.z + pos.z),    //point at a point
@@ -76,6 +76,7 @@ void HandleProjection(){
     glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
 }
 void HandleTransforms(){
+    double s = glfwGetTime();
     for(int i = 0; i < objects.size(); i++){
         if(i == 0){                                 // the skybox
             for(int j = 0; j < objects[0]->Mesh.Vertices.size(); j++){
@@ -113,7 +114,8 @@ void HandleTransforms(){
         }
 
     }
-    double frameEndTime = glfwGetTime();
+    double e = glfwGetTime();
+    printf("handled transforms in %fs\n", e - s);
 }
 
 
@@ -151,10 +153,6 @@ void Update(){
     if (glfwGetKey( Window, GLFW_KEY_LEFT_CONTROL ) == GLFW_PRESS) movekeys.z -= 1;
     movekeys = glm::clamp(movekeys, glm::vec3(-1),glm::vec3(1));
     float move_angle = std::atan2(movekeys.x , movekeys.y);
-    
-    printf("%d|%d\n",(int)movekeys.x, (int)movekeys.y);
-
-    printf("%d | %s\n",(int)glm::degrees(move_angle),(moving) ? "movin" : "not movin");
 
     double xpos, ypos;
     
@@ -271,7 +269,7 @@ int Run(){
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     
-    Window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "i haven't found a practical limit to how long window titles can be, and at this point i'm sure there has to be one but i'm not sure what it would be, but to be fair i haven't seen any long titles", NULL, NULL);
+    Window = glfwCreateWindow(WINDOW_WIDTH, WINDOW_HEIGHT, "i haven't found a practical limit to how long window titles can be, and at this point i'm sure there has to be one but i'm not sure what it would be, but to be fair i haven't seen any long titles, but it's still kind of fun to make useless this like this to confuse everyone who's reading it. speaking of which, how are you doing, you psychopath? how does it feel to read an absurdly long window title? you absolute buffoon, you have fallen right into my trap! which seeing as the trap is just reading some bullshit i'm typing out as i have long overdue homework is pretty lame now that i think about it. anyway send help. also watching this text pour over with vscode's smooth scrolling is pretty nice. there's gotta be a buffer overflow somewhere in here, right? like an amount of memory that X11 or wayland allocates to the window title? it can't be unlimited, right?", NULL, NULL);
     if(Window == NULL){
         fprintf(stderr, "Failed to open window\n");
         glfwTerminate();
@@ -292,13 +290,9 @@ std::vector< glm::vec2 > t_uvs;
 std::vector< glm::vec3 > t_normals;
 
     objects.push_back(new Objects::RenderObject("content/models/skybox.obj",0,1));
-    objects[0]->Transform.Scale = glm::vec3(30);
+    objects[0]->Transform.Scale = glm::vec3(15000);
     objects[0]->ApplyTransform();
     objects.push_back(new Objects::RenderObject("content/models/cube.obj",1,0));
-    objects[1]->ApplyTransform();
-    objects.push_back(new Objects::RenderObject("content/models/spher.obj",2,0));
-    objects[2]->Transform.Position = glm::vec3(0,16,0);
-    objects[2]->ApplyTransform();
     printf("%z  u meshes loaded\n", objects.size());
     
     model_render::Bind_Buffers(vert_render, uv_render,normal_render);
@@ -334,7 +328,7 @@ std::vector< glm::vec3 > t_normals;
         for(int j = 0; j < objects[i]->Mesh.Normals.size(); j++){
             normal_render.push_back(objects[i]->Mesh.Normals[j]);
         }
-        objects[i]->Transform.PendingUpdate = true;
+        objects[i]->Transform.PendingUpdate = false;
     }
     do{
         double frameStartTime = glfwGetTime();
