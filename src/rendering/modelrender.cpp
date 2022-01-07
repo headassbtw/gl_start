@@ -59,7 +59,7 @@ void model_render::Prepare_Buffers(){
     (void*)0                          // array buffer offset
     );
 }
-void model_render::Cleanup_Buffers(){
+void model_render::Cleanup_Buffers(std::vector<glm::vec3> vertices,std::vector<glm::vec2> uvs,std::vector<glm::vec3>normals){
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);

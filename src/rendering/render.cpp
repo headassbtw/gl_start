@@ -226,7 +226,7 @@ void Render(){
     double frameStartTime = glfwGetTime();
     
     
-    model_render::Bind_Buffers(vert_render, uv_render,normal_render);
+    
     model_render::Prepare_Buffers();
     int vert_idx = 0;
     for(int i = 0; i < objects.size(); i++){
@@ -246,7 +246,7 @@ void Render(){
     }
 
 
-    model_render::Cleanup_Buffers();
+    model_render::Cleanup_Buffers(vert_render, uv_render,normal_render);
 
 
     glfwSwapBuffers(Window);
@@ -331,6 +331,7 @@ std::vector< glm::vec3 > t_normals;
         }
         objects[i]->Transform.PendingUpdate = false;
     }
+    model_render::Bind_Buffers(vert_render, uv_render,normal_render);
     do{
         double frameStartTime = glfwGetTime();
         glfwPollEvents();
