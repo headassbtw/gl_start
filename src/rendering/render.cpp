@@ -115,7 +115,6 @@ void HandleTransforms(){
 
     }
     double e = glfwGetTime();
-    printf("handled transforms in %fs\n", e - s);
 }
 
 
@@ -308,9 +307,11 @@ std::vector< glm::vec3 > t_normals;
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.1f, 0.3f, 0.5f);
     textures.clear();
+    Loaders::Textures::LoadSauce();
     textures.push_back(Loaders::Textures::LoadDDS("content/textures/skybox.dds"));
+    
     textures.push_back(Loaders::Textures::LoadDDS("content/textures/coob.dds"));
-    textures.push_back(Loaders::Textures::LoadDDS("content/textures/spher.dds"));
+    
     
 
 

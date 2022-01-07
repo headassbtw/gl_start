@@ -73,8 +73,7 @@ void RenderObject::ApplyTransform(){
     Transform.cache_Position = Transform.Position;
     Transform.Rotation = Transform.Rotation;
     Transform.Scale = Transform.Scale;
-    double e = glfwGetTime();    
-    printf("transform updated in %fms\n",(e-s)/1000);
+    double e = glfwGetTime();
 }
 
 void transform::Update(){
