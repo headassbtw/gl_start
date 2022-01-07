@@ -10,23 +10,22 @@ GLuint VertexArrayID;
 void model_render::Bind_Buffers(std::vector<glm::vec3> vertices,std::vector<glm::vec2> uvs,std::vector<glm::vec3>normals){
     glGenVertexArrays(1, &VertexArrayID);
     glBindVertexArray(VertexArrayID);
+    
+
     glGenBuffers(1, &vertexbuffer);
     glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_DYNAMIC_DRAW);
+    glMapNamedBuffer(vertexbuffer,GL_READ_WRITE);
     glGenBuffers(1, &uvbuffer);
     glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), &uvs[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), &uvs[0], GL_DYNAMIC_DRAW);
 
     glGenBuffers(1, &normalbuffer);
     glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
-    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), &normals[0], GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), &normals[0], GL_DYNAMIC_DRAW);
 }
-
-void model_render::Prepare_Buffers(){
+void model_render::Update_Buffers(std::vector<glm::vec3> vertices,std::vector<glm::vec2> uvs,std::vector<glm::vec3>normals){
     glEnableVertexAttribArray(0);
-    glEnableVertexAttribArray(1);
-    glEnableVertexAttribArray(2);
     glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
     glVertexAttribPointer(
     0,                  // attribute 0. No particular reason for 0, but must match the layout in the shader.
@@ -36,6 +35,9 @@ void model_render::Prepare_Buffers(){
     0,                  // stride
     (void*)0            // array buffer offset
     );
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), vertices.data(), GL_DYNAMIC_DRAW);
+    
+    
 
     glEnableVertexAttribArray(1);
     glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
@@ -47,7 +49,7 @@ void model_render::Prepare_Buffers(){
     0,                                // stride
     (void*)0                          // array buffer offset
     );
-
+    glBufferData(GL_ARRAY_BUFFER, uvs.size() * sizeof(glm::vec2), uvs.data(), GL_DYNAMIC_DRAW);
     glEnableVertexAttribArray(2);
     glBindBuffer(GL_ARRAY_BUFFER, normalbuffer);
     glVertexAttribPointer(
@@ -58,8 +60,16 @@ void model_render::Prepare_Buffers(){
     0,                                // stride
     (void*)0                          // array buffer offset
     );
+    
+    glBufferData(GL_ARRAY_BUFFER, normals.size() * sizeof(glm::vec3), normals.data(), GL_DYNAMIC_DRAW);
 }
-void model_render::Cleanup_Buffers(std::vector<glm::vec3> vertices,std::vector<glm::vec2> uvs,std::vector<glm::vec3>normals){
+
+
+
+void model_render::Prepare_Buffers(int sz){
+    
+}
+void model_render::Cleanup_Buffers(std::vector<glm::vec3> vertices,std::vector<glm::vec2> uvs,std::vector<glm::vec3>normals){    
     glDisableVertexAttribArray(0);
     glDisableVertexAttribArray(1);
     glDisableVertexAttribArray(2);

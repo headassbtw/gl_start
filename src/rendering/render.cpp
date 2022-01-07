@@ -85,8 +85,7 @@ void HandleTransforms(){
                 objects[i]->Mesh.Vertices[j].x + pos.x,
                 objects[i]->Mesh.Vertices[j].y + pos.y,
                 objects[i]->Mesh.Vertices[j].z + pos.z
-                )
-                ;
+                );
             }
         }
         else if(objects[i]->Transform.PendingUpdate) // every other object
@@ -153,9 +152,14 @@ void Update(){
     movekeys = glm::clamp(movekeys, glm::vec3(-1),glm::vec3(1));
     float move_angle = std::atan2(movekeys.x , movekeys.y);
 
-    double xpos, ypos;
-    
+    if (glfwGetKey( Window, GLFW_KEY_LEFT_SHIFT ) == GLFW_PRESS){
+        speed = 1.5f;
+    }
+    else{
+        speed = 1.0f;
+    }
 
+    double xpos, ypos;
     glfwGetCursorPos(Window, &xpos, &ypos);
     if(glfwGetKey( Window, GLFW_KEY_GRAVE_ACCENT ) == GLFW_RELEASE){
         //when tilde is not held, temporary mouse lock disable key
@@ -213,30 +217,15 @@ void SwitchShader(int program){
 float skybox_scale = 100.0f;
 void Render(){
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
     glActiveTexture(GL_TEXTURE0);
+    model_render::Update_Buffers(vert_render, uv_render,normal_render);
+    
 
-    if (glfwGetKey( Window, GLFW_KEY_LEFT_SHIFT ) == GLFW_PRESS){
-        speed = 1.5f;
-    }
-    else{
-        speed = 1.0f;
-    }
-
-    double frameStartTime = glfwGetTime();
-    
-    
-    
-    model_render::Prepare_Buffers();
     int vert_idx = 0;
     for(int i = 0; i < objects.size(); i++){
         int shdr = objects[i]->ShaderID;
         int tex = objects[i]->TextureID;
 
-
-        
-        
-        
         SwitchShader(shdr);
         HandleProjection();
         glUniform1i(TextureID, tex);
@@ -244,12 +233,9 @@ void Render(){
         glDrawArrays(GL_TRIANGLES, vert_idx, vert_idx + objects[i]->Mesh.Vertices.size());
         vert_idx += objects[i]->Mesh.Vertices.size();
     }
-
-
     model_render::Cleanup_Buffers(vert_render, uv_render,normal_render);
-
-
     glfwSwapBuffers(Window);
+    printf("(%f,%f,%f)\n",objects[1]->Transform.Position.x,objects[1]->Transform.Position.y,objects[1]->Transform.Position.z);
 }
 
 
@@ -283,13 +269,10 @@ int Run(){
 
     glfwSetInputMode(Window, GLFW_STICKY_KEYS, GL_FALSE);
     glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-    //glfwSwapInterval(0);
-    std::vector< glm::vec3 > t_vertices;
-std::vector< glm::vec2 > t_uvs;
-std::vector< glm::vec3 > t_normals;
+    
 
     objects.push_back(new Objects::RenderObject("content/models/skybox.obj",0,1));
-    objects[0]->Transform.Scale = glm::vec3(15000);
+    objects[0]->Transform.Scale = glm::vec3(10);
     objects[0]->ApplyTransform();
     objects.push_back(new Objects::RenderObject("content/models/cube.obj",1,0));
     printf("%z  u meshes loaded\n", objects.size());
@@ -302,7 +285,6 @@ std::vector< glm::vec3 > t_normals;
     shaders.clear();
     shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_lit.glsl"));
     shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_unlit.glsl"));
-    shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_lit.glsl"));
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.1f, 0.3f, 0.5f);
