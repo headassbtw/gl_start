@@ -14,7 +14,6 @@ uniform sampler2D myTextureSampler;
 uniform mat4 MV;
 uniform vec3 LightPosition_worldspace;
 // Values that stay constant for the whole mesh.
-uniform bool Lit;
 
 void main(){
 	vec3 LightColor = vec3(1,1,1);
@@ -49,17 +48,12 @@ void main(){
 	//  - Looking elsewhere -> < 1
 	float cosAlpha = clamp( dot( E,R ), 0,1 );
 	
-	if(Lit){
-		color = 
-		// Ambient : simulates indirect lighting
-		MaterialAmbientColor +
-		// Diffuse : "color" of the object
-		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance*distance) +
-		// Specular : reflective highlight, like a mirror
-		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) / (distance*distance);
-	}
-	else{
-		color = 
-		MaterialDiffuseColor;
-	}
+
+	color = 
+	// Ambient : simulates indirect lighting
+	MaterialAmbientColor +
+	// Diffuse : "color" of the object
+	MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance*distance) +
+	// Specular : reflective highlight, like a mirror
+	MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) / (distance*distance);
 }

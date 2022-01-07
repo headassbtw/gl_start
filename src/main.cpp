@@ -10,5 +10,5 @@ int main(int argc, char* argv[]){
     Content::Filesystem::Initialize(virt);
     std::cout << "Hello World!" << std::endl;
     
-    return Render();
+    return Run();
 }

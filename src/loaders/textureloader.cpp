@@ -62,7 +62,7 @@ GLuint Loaders::Textures::LoadBMP_Custom(const char *path){
 
 GLuint Loaders::Textures::LoadDDS(const char *path){
     unsigned char header[124];
-
+	printf("loading texture \"%s\"\n",path);
 	FILE *fp; 
  
 	/* try to open the file */ 
@@ -142,6 +142,6 @@ GLuint Loaders::Textures::LoadDDS(const char *path){
 	} 
 
 	free(buffer); 
-
+	printf("loaded texture in slot %u\n",textureID);
 	return textureID;
 }

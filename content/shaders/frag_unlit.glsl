@@ -1,6 +1,5 @@
 #version 330 core
 
-// Interpolated values from the vertex shaders
 in vec2 UV;
 in vec3 Position_worldspace;
 in vec3 Normal_cameraspace;
@@ -15,10 +14,7 @@ uniform sampler2D myTextureSampler;
 uniform mat4 MV;
 uniform vec3 LightPosition_worldspace;
 
-void fragone(){
-
-	// Light emission properties
-	// You probably want to put them as uniforms
+void main(){
 	vec3 LightColor = vec3(1,1,1);
 	float LightPower = 50.0f;
 	
@@ -52,11 +48,5 @@ void fragone(){
 	float cosAlpha = clamp( dot( E,R ), 0,1 );
 	
 	color = 
-		// Ambient : simulates indirect lighting
-		MaterialAmbientColor +
-		// Diffuse : "color" of the object
-		MaterialDiffuseColor * LightColor * LightPower * cosTheta / (distance*distance) +
-		// Specular : reflective highlight, like a mirror
-		MaterialSpecularColor * LightColor * LightPower * pow(cosAlpha,5) / (distance*distance);
-
+		MaterialDiffuseColor;
 }

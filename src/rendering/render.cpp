@@ -1,8 +1,12 @@
 
+#include "objects/renderobject.hpp"
 #include <GL/glew.h>
 #include <GL/gl.h>
-#include <glm/ext/matrix_transform.hpp>
-#include <glm/ext/vector_float3.hpp>
+#include <cstring>
+#include <glm/glm.hpp>
+#include <glm/gtx/compatibility.hpp>
+#include <glm/gtx/common.hpp>
+#include <glm/fwd.hpp>
 #include <rendering/shaders.hpp>
 #include <cstdio>
 #include <vector>
@@ -18,23 +22,26 @@
 #include <loaders/objloader.hpp>
 GLFWwindow* Window;
 
-GLuint progID;
-GLuint progID2;
 GLuint SwapShader;
 
+int obj;
 GLuint MatrixID;
 GLuint TextureID;
 GLuint ViewMatrixID;
 GLuint ModelMatrixID;
 GLuint LightID;
 
-GLuint Texture;
-GLuint Texture2;
+std::vector<Objects::RenderObject*> objects;
+std::vector<GLuint> shaders;
+std::vector<GLuint> textures;
 
-std::vector< glm::vec3 > og_vertices;
+
+std::vector< glm::vec3 > vert_render;
 std::vector< glm::vec3 > vertices;
 std::vector< glm::vec2 > uvs;
+std::vector< glm::vec2 > uv_render;
 std::vector< glm::vec3 > normals;
+std::vector< glm::vec3 > normal_render;
 
 int skyboxverts = 0;
 
@@ -44,7 +51,6 @@ double horizontalAngle, verticalAngle;
 auto vertical_limit = glm::radians(89.9f);
 auto vertical_base = glm::radians(-89.9f);
 float sens = 0.7f;
-<<<<<<< HEAD
 
 
 void HandleProjection(){
@@ -52,7 +58,7 @@ void HandleProjection(){
     glm::mat4 View = glm::lookAt(
     glm::vec3(pos.x,pos.y,pos.z),                               //position
     glm::vec3(look.x + pos.x,look.y + pos.y,look.z + pos.z),    //point at a point
-    glm::vec3(0,(glfwGetKey( Window, GLFW_KEY_A ) == GLFW_RELEASE) ? 1 : -1,0)
+    glm::vec3(0,1,0)
     );
     glm::mat4 Model = glm::mat4(1.0f);
     glm::mat4 mvp = Projection * View * Model;
@@ -66,12 +72,55 @@ void HandleProjection(){
     glm::vec3 lightPos = glm::vec3(4,4,-4);
     glUniform3f(LightID, lightPos.x, lightPos.y, lightPos.z);
 }
+void HandleTransforms(){
+    for(int i = 0; i < objects.size(); i++){
+        if(i == 0){                                 // the skybox
+            for(int j = 0; j < objects[0]->Mesh.Vertices.size(); j++){
+                vert_render[j] = 
+                glm::vec3(
+                objects[i]->Mesh.Vertices[j].x + pos.x,
+                objects[i]->Mesh.Vertices[j].y + pos.y,
+                objects[i]->Mesh.Vertices[j].z + pos.z
+                )
+                ;
+            }
+        }
+        else if(objects[i]->Transform.PendingUpdate) // every other object
+        {
+            
+            
+            objects[i]->ApplyTransform();
+            objects[i]->Transform.PendingUpdate = false;
 
-=======
+            int v_idx = objects[i]->Mesh.vert_buffer_idx;
+            int u_idx = objects[i]->Mesh.uv_buffer_idx;
+            int n_idx = objects[i]->Mesh.normal_buffer_idx;
+
+            
+
+            for(int j = v_idx; j < v_idx + objects[i]->Mesh.Vertices.size(); j++){
+                vert_render[j] = (objects[i]->Mesh.Vertices[j - v_idx]);
+            }
+            for(int j = u_idx; j < u_idx + objects[i]->Mesh.UVs.size(); j++){
+                uv_render[j] = (objects[i]->Mesh.UVs[j - u_idx]);
+            }
+            for(int j = n_idx; j < n_idx + objects[i]->Mesh.Normals.size(); j++){
+                normal_render[j] = (objects[i]->Mesh.Normals[j - n_idx]);
+            }
+        }
+
+    }
+    double frameEndTime = glfwGetTime();
+}
+
+
+
+
 float speed = 1.0f;
->>>>>>> 98979a5fb9c70d24caa8e637a421cf89be40d0a1
+float strafe_mod = 0.75f;
 void Update(){
     double xpos, ypos;
+    
     glfwGetCursorPos(Window, &xpos, &ypos);
     if(glfwGetKey( Window, GLFW_KEY_GRAVE_ACCENT ) == GLFW_RELEASE){
         //when tilde is not held, temporary mouse lock disable key
@@ -92,6 +141,22 @@ void Update(){
     look.z = cos(verticalAngle) * cos(horizontalAngle);
 
 
+    if (glfwGetKey( Window, GLFW_KEY_D ) == GLFW_PRESS){
+
+        glm::vec3 lookr;
+        lookr.x = cos(verticalAngle) * sin(horizontalAngle - 90);
+        lookr.z = cos(verticalAngle) * cos(horizontalAngle - 90);
+
+        pos += lookr * speed * strafe_mod* Time::DeltaTime;
+    }
+    if (glfwGetKey( Window, GLFW_KEY_A ) == GLFW_PRESS){
+
+        glm::vec3 lookl;
+        lookl.x = cos(verticalAngle) * sin(horizontalAngle + 90);
+        lookl.z = cos(verticalAngle) * cos(horizontalAngle + 90);
+
+        pos += lookl * speed * strafe_mod* Time::DeltaTime;
+    }
     
 
     if (glfwGetKey( Window, GLFW_KEY_W ) == GLFW_PRESS){
@@ -100,10 +165,22 @@ void Update(){
     if (glfwGetKey( Window, GLFW_KEY_S ) == GLFW_PRESS){
         pos -= look * speed * Time::DeltaTime;
     }
+    if (glfwGetKey( Window, GLFW_KEY_Z ) == GLFW_PRESS){
+        double zs = glfwGetTime();
+        auto shit = Objects::transform();
+        shit.Position = glm::vec3(0,objects[1]->Transform.Position.y + 0.05f,0);
+        shit.Rotation = glm::vec3(0,0,0);
+        shit.Scale = glm::vec3(1,1,1);
+        objects[1]->Transform.Update(shit);
+        double ze = glfwGetTime();
+        //printf("holding Z cost you %fms\n",(ze-zs)*1000);
+    }
+    HandleTransforms();
     HandleProjection();
         
 }
-void SwitchShader(GLuint prog){
+void SwitchShader(int program){
+    GLuint prog = shaders[program];
     glUseProgram(prog);
     MatrixID = glGetUniformLocation(prog, "MVP");
     ViewMatrixID = glGetUniformLocation(prog, "V");
@@ -115,24 +192,10 @@ void SwitchShader(GLuint prog){
 }
 
 float skybox_scale = 100.0f;
-void RenderUpdate(){
-
+void Render(){
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
     glActiveTexture(GL_TEXTURE0);
-
-    if (glfwGetKey( Window, GLFW_KEY_SPACE ) == GLFW_PRESS){
-        glUniform1f(SwapShader, 1);
-        SwitchShader(progID2);
-        glBindTexture(GL_TEXTURE_2D, Texture2);
-    }
-    else{
-        glUniform1f(SwapShader, 0);
-        SwitchShader(progID);
-        glBindTexture(GL_TEXTURE_2D, Texture);
-    }
-<<<<<<< HEAD
-=======
 
     if (glfwGetKey( Window, GLFW_KEY_LEFT_SHIFT ) == GLFW_PRESS){
         speed = 1.5f;
@@ -141,35 +204,27 @@ void RenderUpdate(){
         speed = 1.0f;
     }
 
-    glUniform1i(TextureID, 0);
->>>>>>> 98979a5fb9c70d24caa8e637a421cf89be40d0a1
-
-    int last = vertices.size()-1;
-    for(int i = 0; i < skyboxverts; i++){
-        vertices[i].x = (og_vertices[i].x * skybox_scale) + pos.x;
-        vertices[i].y = (og_vertices[i].y * skybox_scale) + pos.y;
-        vertices[i].z = (og_vertices[i].z * skybox_scale) + pos.z;
-    }
+    double frameStartTime = glfwGetTime();
     
-
     
-    model_render::Bind_Buffers(vertices, uvs,normals);
-
+    model_render::Bind_Buffers(vert_render, uv_render,normal_render);
     model_render::Prepare_Buffers();
+    int vert_idx = 0;
+    for(int i = 0; i < objects.size(); i++){
+        int shdr = objects[i]->ShaderID;
+        int tex = objects[i]->TextureID;
 
 
-
-    SwitchShader(progID2);
-    glUniform1f(SwapShader, 0);
-    glBindTexture(GL_TEXTURE_2D, Texture2);
-    HandleProjection();
-    glDrawArrays(GL_TRIANGLES, 0, skyboxverts);
-
-    SwitchShader(progID);
-    glUniform1f(SwapShader, 1);
-    glBindTexture(GL_TEXTURE_2D, Texture);
-    HandleProjection();
-    glDrawArrays(GL_TRIANGLES, skyboxverts, vertices.size());
+        
+        
+        
+        SwitchShader(shdr);
+        HandleProjection();
+        glUniform1i(TextureID, tex);
+        glBindTexture(GL_TEXTURE_2D, textures[tex]);
+        glDrawArrays(GL_TRIANGLES, vert_idx, vert_idx + objects[i]->Mesh.Vertices.size());
+        vert_idx += objects[i]->Mesh.Vertices.size();
+    }
 
 
     model_render::Cleanup_Buffers();
@@ -181,7 +236,7 @@ void RenderUpdate(){
 
 
 
-int Render(){
+int Run(){
     glewExperimental = true;
     if(!glfwInit()){
         fprintf(stderr, "Could not initialize GLFW\n");
@@ -214,36 +269,56 @@ int Render(){
 std::vector< glm::vec2 > t_uvs;
 std::vector< glm::vec3 > t_normals;
 
-    //addAxisShit();
-    bool res_skybox = Loaders::Models::loadOBJ("content/models/skybox.cob", og_vertices, uvs, normals);
-    if(!res_skybox){
-        fprintf(stderr, "FUCKED UP THE SKYBOX LMAO\n");
-        return -1;
-    }
-    skyboxverts = og_vertices.size();
-    bool shitass = Loaders::Models::loadCOB("content/models/shitass.cob", og_vertices, uvs, normals);
-    bool res = Loaders::Models::loadOBJ("content/models/cube.cob", og_vertices, uvs, normals);
-    printf("meshes loaded\n");
+    objects.push_back(new Objects::RenderObject("content/models/skybox.obj",0,1));
+    objects[0]->Transform.Scale = glm::vec3(30);
+    objects[0]->ApplyTransform();
+    objects.push_back(new Objects::RenderObject("content/models/cube.obj",1,0));
+    objects[1]->ApplyTransform();
+    objects.push_back(new Objects::RenderObject("content/models/spher.obj",2,0));
+    objects[2]->Transform.Position = glm::vec3(0,16,0);
+    objects[2]->ApplyTransform();
+    printf("%z  u meshes loaded\n", objects.size());
     
-    model_render::Bind_Buffers(og_vertices, uvs,normals);
+    model_render::Bind_Buffers(vert_render, uv_render,normal_render);
     
-    for(int i = 0; i < og_vertices.size();i++){
-        vertices.push_back(og_vertices[i]);
-    }
     
-    progID = Shaders::GetShaders("shaders/vert.glsl","shaders/masterfrag.glsl");
-    progID2 = Shaders::GetShaders("shaders/vert.glsl","shaders/masterfrag.glsl");
+    
+    
+    shaders.clear();
+    shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_lit.glsl"));
+    shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_unlit.glsl"));
+    shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_lit.glsl"));
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.1f, 0.3f, 0.5f);
-    Texture = Loaders::Textures::LoadDDS("content/textures/coob.dds");
-    Texture2 = Loaders::Textures::LoadDDS("content/textures/skybox.dds");
-    SwitchShader(progID);
+    textures.clear();
+    textures.push_back(Loaders::Textures::LoadDDS("content/textures/skybox.dds"));
+    textures.push_back(Loaders::Textures::LoadDDS("content/textures/coob.dds"));
+    textures.push_back(Loaders::Textures::LoadDDS("content/textures/spher.dds"));
+    
+
+
+
+    for(int i = 0; i < objects.size(); i++){
+        objects[i]->Mesh.vert_buffer_idx = vert_render.size();
+        objects[i]->Mesh.uv_buffer_idx = uv_render.size();
+        objects[i]->Mesh.normal_buffer_idx = normal_render.size();
+        for(int j = 0; j < objects[i]->Mesh.Vertices.size(); j++){
+            vert_render.push_back(objects[i]->Mesh.Vertices[j]);
+        }
+        for(int j = 0; j < objects[i]->Mesh.UVs.size(); j++){
+            uv_render.push_back(objects[i]->Mesh.UVs[j]);
+        }
+        for(int j = 0; j < objects[i]->Mesh.Normals.size(); j++){
+            normal_render.push_back(objects[i]->Mesh.Normals[j]);
+        }
+        objects[i]->Transform.PendingUpdate = true;
+    }
     do{
         double frameStartTime = glfwGetTime();
         glfwPollEvents();
         Update();
-        RenderUpdate();
+        Render();
         double frameEndTime = glfwGetTime();
         Time::DeltaTime = float(frameEndTime - frameStartTime);
     }
