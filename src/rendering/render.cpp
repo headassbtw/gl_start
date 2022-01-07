@@ -24,9 +24,6 @@
 #include <loaders/objloader.hpp>
 GLFWwindow* Window;
 
-GLuint SwapShader;
-
-int obj;
 GLuint MatrixID;
 GLuint TextureID;
 GLuint ViewMatrixID;
@@ -159,6 +156,9 @@ void Update(){
         speed = 1.0f;
     }
 
+    if (glfwGetKey( Window, GLFW_KEY_C ) == GLFW_PRESS) glfwSwapInterval(2);
+    if (glfwGetKey( Window, GLFW_KEY_V ) == GLFW_PRESS) glfwSwapInterval(1);
+
     double xpos, ypos;
     glfwGetCursorPos(Window, &xpos, &ypos);
     if(glfwGetKey( Window, GLFW_KEY_GRAVE_ACCENT ) == GLFW_RELEASE){
@@ -170,8 +170,8 @@ void Update(){
         glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
     }
 
-    horizontalAngle += Time::DeltaTime * sens * float(WINDOW_WIDTH/2 - xpos );
-    verticalAngle   += Time::DeltaTime * sens * float( WINDOW_HEIGHT/2 - ypos );
+    horizontalAngle += sens * Time::DeltaTime * float(WINDOW_WIDTH/2 - xpos );
+    verticalAngle   += sens * Time::DeltaTime * float( WINDOW_HEIGHT/2 - ypos );
     if(glm::degrees(verticalAngle) > 89.9f ) verticalAngle = vertical_limit;
     if(glm::degrees(verticalAngle) < -89.9f ) verticalAngle = vertical_base;
 
@@ -208,16 +208,15 @@ void SwitchShader(int program){
     MatrixID = glGetUniformLocation(prog, "MVP");
     ViewMatrixID = glGetUniformLocation(prog, "V");
 	ModelMatrixID = glGetUniformLocation(prog, "M");
-    SwapShader = glGetUniformLocation(prog, "Lit");
     
-    TextureID  = glGetUniformLocation(prog, "textureSampler");
+//    TextureID  = glGetUniformLocation(prog, "TextureSampler");
     LightID = glGetUniformLocation(prog, "LightPosition_worldspace");
 }
 
 float skybox_scale = 100.0f;
 void Render(){
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glActiveTexture(GL_TEXTURE0);
+    
     model_render::Update_Buffers(vert_render, uv_render,normal_render);
     
 
@@ -225,17 +224,17 @@ void Render(){
     for(int i = 0; i < objects.size(); i++){
         int shdr = objects[i]->ShaderID;
         int tex = objects[i]->TextureID;
-
+        
         SwitchShader(shdr);
-        HandleProjection();
-        glUniform1i(TextureID, tex);
+        glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, textures[tex]);
+        //glUniform1i(TextureID, textures[tex]);
+        HandleProjection();
         glDrawArrays(GL_TRIANGLES, vert_idx, vert_idx + objects[i]->Mesh.Vertices.size());
         vert_idx += objects[i]->Mesh.Vertices.size();
     }
     model_render::Cleanup_Buffers(vert_render, uv_render,normal_render);
     glfwSwapBuffers(Window);
-    printf("(%f,%f,%f)\n",objects[1]->Transform.Position.x,objects[1]->Transform.Position.y,objects[1]->Transform.Position.z);
 }
 
 
@@ -271,13 +270,7 @@ int Run(){
     glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
     
 
-    objects.push_back(new Objects::RenderObject("content/models/skybox.obj",0,1));
-    objects[0]->Transform.Scale = glm::vec3(10);
-    objects[0]->ApplyTransform();
-    objects.push_back(new Objects::RenderObject("content/models/cube.obj",1,0));
-    printf("%z  u meshes loaded\n", objects.size());
     
-    model_render::Bind_Buffers(vert_render, uv_render,normal_render);
     
     
     
@@ -285,16 +278,25 @@ int Run(){
     shaders.clear();
     shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_lit.glsl"));
     shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_unlit.glsl"));
+    shaders.push_back(Shaders::GetShaders("shaders/vert.glsl","shaders/frag_red.glsl"));
     glDepthFunc(GL_LESS);
     glEnable(GL_DEPTH_TEST);
     glClearColor(0.0f, 0.1f, 0.3f, 0.5f);
     textures.clear();
     Loaders::Textures::LoadSauce();
     textures.push_back(Loaders::Textures::LoadDDS("content/textures/skybox.dds"));
-    
     textures.push_back(Loaders::Textures::LoadDDS("content/textures/coob.dds"));
+    textures.push_back(Loaders::Textures::LoadDDS("content/textures/notreal.dds"));
     
+
+    objects.push_back(new Objects::RenderObject("content/models/skybox.obj",0,1));
+    objects[0]->Transform.Scale = glm::vec3(10000);
+    objects[0]->ApplyTransform();
+    objects.push_back(new Objects::RenderObject("content/models/cube.obj",1,0));
+    objects.push_back(new Objects::RenderObject("content/models/skybox.obj",2,2));
+    printf("%zu meshes loaded\n", objects.size());
     
+    model_render::Bind_Buffers(vert_render, uv_render,normal_render);
 
 
 
@@ -313,12 +315,17 @@ int Run(){
         }
         objects[i]->Transform.PendingUpdate = false;
     }
+    
+    for(int i = 0; i < objects.size();i++){
+        printf("\nObject %d:\n     Shader %u (%u) Texture %u (%u)\n", i+1, objects[i]->ShaderID, shaders[objects[i]->TextureID], objects[i]->TextureID, textures[objects[i]->TextureID]);
+    }
     model_render::Bind_Buffers(vert_render, uv_render,normal_render);
     do{
         double frameStartTime = glfwGetTime();
-        glfwPollEvents();
+        
         Update();
         Render();
+        glfwPollEvents();
         double frameEndTime = glfwGetTime();
         Time::DeltaTime = float(frameEndTime - frameStartTime);
     }
