@@ -3,10 +3,12 @@
 #include <GL/glew.h>
 #include <GL/gl.h>
 #include <cstring>
+#include <glm/common.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtx/compatibility.hpp>
 #include <glm/gtx/common.hpp>
 #include <glm/fwd.hpp>
+#include <glm/trigonometric.hpp>
 #include <rendering/shaders.hpp>
 #include <cstdio>
 #include <vector>
@@ -47,6 +49,7 @@ int skyboxverts = 0;
 
 glm::vec3 pos;
 glm::vec3 look;
+glm::vec3 move;
 double horizontalAngle, verticalAngle;
 auto vertical_limit = glm::radians(89.9f);
 auto vertical_base = glm::radians(-89.9f);
@@ -115,12 +118,47 @@ void HandleTransforms(){
 
 
 
-
 float speed = 1.0f;
+float speedramp = 0.5f;
+bool ramping = false;
 float strafe_mod = 0.75f;
+float ramp_speed = 3.5f;
+glm::vec3 movekeys = glm::vec3(0);
 void Update(){
+    bool moving = glfwGetKey( Window, GLFW_KEY_W ) == GLFW_PRESS
+    || glfwGetKey( Window, GLFW_KEY_A ) == GLFW_PRESS
+    || glfwGetKey( Window, GLFW_KEY_S ) == GLFW_PRESS
+    || glfwGetKey( Window, GLFW_KEY_D ) == GLFW_PRESS
+    || glfwGetKey( Window, GLFW_KEY_SPACE ) == GLFW_PRESS
+    || glfwGetKey( Window, GLFW_KEY_LEFT_CONTROL ) == GLFW_PRESS;
+    if(moving) movekeys = glm::vec3(0);
+    if(speedramp < 1 && moving){
+        speedramp += (ramp_speed * Time::DeltaTime);
+        ramping = true;
+        
+    }
+    else if(!moving){
+        speedramp -= (ramp_speed * Time::DeltaTime);
+    }
+
+
+
+    if (glfwGetKey( Window, GLFW_KEY_W ) == GLFW_PRESS) movekeys.y += 1;
+    if (glfwGetKey( Window, GLFW_KEY_A ) == GLFW_PRESS) movekeys.x += 1;
+    if (glfwGetKey( Window, GLFW_KEY_S ) == GLFW_PRESS) movekeys.y -= 1;
+    if (glfwGetKey( Window, GLFW_KEY_D ) == GLFW_PRESS) movekeys.x -= 1;
+    if (glfwGetKey( Window, GLFW_KEY_SPACE ) == GLFW_PRESS) movekeys.z += 1;
+    if (glfwGetKey( Window, GLFW_KEY_LEFT_CONTROL ) == GLFW_PRESS) movekeys.z -= 1;
+    movekeys = glm::clamp(movekeys, glm::vec3(-1),glm::vec3(1));
+    float move_angle = std::atan2(movekeys.x , movekeys.y);
+    
+    printf("%d|%d\n",(int)movekeys.x, (int)movekeys.y);
+
+    printf("%d | %s\n",(int)glm::degrees(move_angle),(moving) ? "movin" : "not movin");
+
     double xpos, ypos;
     
+
     glfwGetCursorPos(Window, &xpos, &ypos);
     if(glfwGetKey( Window, GLFW_KEY_GRAVE_ACCENT ) == GLFW_RELEASE){
         //when tilde is not held, temporary mouse lock disable key
@@ -140,44 +178,28 @@ void Update(){
     look.y =sin(verticalAngle);
     look.z = cos(verticalAngle) * cos(horizontalAngle);
 
-
-    if (glfwGetKey( Window, GLFW_KEY_D ) == GLFW_PRESS){
-
-        glm::vec3 lookr;
-        lookr.x = cos(verticalAngle) * sin(horizontalAngle - 90);
-        lookr.z = cos(verticalAngle) * cos(horizontalAngle - 90);
-
-        pos += lookr * speed * strafe_mod* Time::DeltaTime;
-    }
-    if (glfwGetKey( Window, GLFW_KEY_A ) == GLFW_PRESS){
-
-        glm::vec3 lookl;
-        lookl.x = cos(verticalAngle) * sin(horizontalAngle + 90);
-        lookl.z = cos(verticalAngle) * cos(horizontalAngle + 90);
-
-        pos += lookl * speed * strafe_mod* Time::DeltaTime;
-    }
     
 
-    if (glfwGetKey( Window, GLFW_KEY_W ) == GLFW_PRESS){
-        pos += look * speed * Time::DeltaTime;
-    }
-    if (glfwGetKey( Window, GLFW_KEY_S ) == GLFW_PRESS){
-        pos -= look * speed * Time::DeltaTime;
-    }
-    if (glfwGetKey( Window, GLFW_KEY_Z ) == GLFW_PRESS){
-        double zs = glfwGetTime();
-        auto shit = Objects::transform();
-        shit.Position = glm::vec3(0,objects[1]->Transform.Position.y + 0.05f,0);
-        shit.Rotation = glm::vec3(0,0,0);
-        shit.Scale = glm::vec3(1,1,1);
-        objects[1]->Transform.Update(shit);
-        double ze = glfwGetTime();
-        //printf("holding Z cost you %fms\n",(ze-zs)*1000);
-    }
+    speedramp = glm::clamp(speedramp, 0.0f,1.0f);
+
+    float horizonangle_movecalc = horizontalAngle;
+
+
+    glm::vec3 lookr;
+    lookr.x = cos(0) * sin(horizontalAngle + move_angle);
+    lookr.y = movekeys.z;
+    lookr.z = cos(0) * cos(horizontalAngle + move_angle);
+
+    move = lookr;
+
+
+    move = glm::clamp(move, glm::vec3(-1.0f),glm::vec3(1.0f));
+
+
     HandleTransforms();
     HandleProjection();
-        
+    
+    pos += move * speed * speedramp* Time::DeltaTime;
 }
 void SwitchShader(int program){
     GLuint prog = shaders[program];
@@ -264,7 +286,7 @@ int Run(){
 
     glfwSetInputMode(Window, GLFW_STICKY_KEYS, GL_FALSE);
     glfwSetInputMode(Window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
+    //glfwSwapInterval(0);
     std::vector< glm::vec3 > t_vertices;
 std::vector< glm::vec2 > t_uvs;
 std::vector< glm::vec3 > t_normals;

@@ -123,6 +123,14 @@ bool Loaders::Models::loadCOB(
 	int VertexTexCoordCount = BinaryIO::ReadInt(&file);
 	int VertexNormalCount = BinaryIO::ReadInt(&file);
 	int FaceCount = BinaryIO::ReadInt(&file);
+
+	
+
+
+	for(int i = 0; i < VertexCount; i++){
+
+	}
+
 	
 	
 
